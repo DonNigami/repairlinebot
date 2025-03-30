@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ฟอร์มแจ้งซ่อมงานบริการ</title>
+  <!-- Tailwind CSS สำหรับออกแบบหน้าเว็บ -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- LIFF SDK -->
+  <script src="https://static.line-scdn.net/liff/edge/2.1/sdk.js"></script>
+  <!-- jQuery -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+    .spinner { display: none; }
+  </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
+  <div class="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
+    <h2 class="text-2xl font-bold mb-6 text-center">ฟอร์มแจ้งซ่อมงานบริการ</h2>
+    <form id="repairForm">
+      <!-- ฟิลด์ซ่อนสำหรับเก็บข้อมูลจาก LIFF -->
+      <input type="hidden" id="userId" name="userId">
+      <input type="hidden" id="profileName" name="profileName">
+      
+      <div class="mb-4">
+        <label for="email" class="block text-gray-700 font-semibold mb-2">ที่อยู่อีเมล:</label>
+        <input type="email" id="email" name="email" required class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring focus:border-blue-300">
+      </div>
+      
+      <div class="mb-4">
+        <label for="fullName" class="block text-gray-700 font-semibold mb-2">ชื่อ-สกุล:</label>
+        <input type="text" id="fullName" name="fullName" required class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring focus:border-blue-300">
+      </div>
+      
+      <div class="mb-4">
+        <label for="issue" class="block text-gray-700 font-semibold mb-2">อาการที่ผิดปกติ:</label>
+        <input type="text" id="issue" name="issue" required class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring focus:border-blue-300">
+      </div>
+      
+      <div class="mb-4">
+        <label for="details" class="block text-gray-700 font-semibold mb-2">รายละเอียด:</label>
+        <textarea id="details" name="details" rows="4" required class="w-full border border-gray-300 p-2 rounded focus:outline-none focus:ring focus:border-blue-300"></textarea>
+      </div>
+      
+      <div class="flex items-center justify-center">
+        <button type="submit" id="submitBtn" class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 focus:outline-none">ส่งข้อมูลแจ้งซ่อม</button>
+        <div id="loadingSpinner" class="spinner ml-4">
+          <svg class="animate-spin h-6 w-6 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+          </svg>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <script>
+    // ฟังก์ชัน initialize LIFF และบังคับให้เข้าสู่ระบบ (Login) ถ้ายังไม่ได้เข้าสู่ระบบ
+    async function initializeLiff() {
+      try {
+        const liffId = "YOUR_LIFF_ID"; // แทนที่ด้วย LIFF ID ของคุณ
+        await liff.init({ liffId });
+        if (!liff.isLoggedIn()) {
+          liff.login({ redirectUri: window.location.href });
+        } else {
+          const profile = await liff.getProfile();
+          $("#userId").val(profile.userId);
+          $("#profileName").val(profile.displayName);
+        }
+      } catch (error) {
+        console.error("LIFF Initialization error:", error);
+      }
+    }
+    
+    $(document).ready(function() {
+      initializeLiff();
+      
+      $("#repairForm").on("submit", async function(e) {
+        e.preventDefault();
+        // แสดง spinner และปิดปุ่มส่งข้อมูล
+        $("#loadingSpinner").show();
+        $("#submitBtn").attr("disabled", true);
+        
+        const data = {
+          userId: $("#userId").val(),
+          profileName: $("#profileName").val(),
+          email: $("#email").val(),
+          fullName: $("#fullName").val(),
+          issue: $("#issue").val(),
+          details: $("#details").val()
+        };
+        
+        console.log("ส่งข้อมูล:", data);
+        
+        try {
+          // ใช้ mode: "no-cors" เพื่อหลีกเลี่ยงปัญหา preflight CORS
+          await fetch("YOUR_APPS_SCRIPT_WEBAPP_URL", {
+            method: "POST",
+            mode: "no-cors",
+            headers: {
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+          });
+          
+          // เนื่องจาก response เป็น opaque (no-cors) เราจะถือว่าการส่งสำเร็จถ้าไม่มี error
+          alert("บันทึกข้อมูลเรียบร้อยแล้ว");
+          liff.closeWindow();
+        } catch (error) {
+          console.error("Fetch error:", error);
+          alert("เกิดข้อผิดพลาด: " + error.message);
+        } finally {
+          $("#loadingSpinner").hide();
+          $("#submitBtn").attr("disabled", false);
+        }
+      });
+    });
+  </script>
+</body>
+</html>
